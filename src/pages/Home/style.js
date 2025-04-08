@@ -1,0 +1,1 @@
+import '../../static/home.less'
