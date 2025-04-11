@@ -1,6 +1,6 @@
 import { NotiInfo } from '@/services/notification/noti';
 import supabase from '@/services/supabase';
-import { BellOutlined, UserOutlined } from '@ant-design/icons';
+import { BellOutlined, ExclamationCircleFilled, UserOutlined } from '@ant-design/icons';
 import { useModel } from '@umijs/max';
 import { Avatar, Badge, List, Popover, Typography } from 'antd';
 import { FC, useEffect, useState } from 'react';
@@ -21,9 +21,14 @@ const Notification: FC = () => {
   const [senderMap, setSenderMap] = useState<Record<string, UserInfo[]>>({});
 
   const handleOpenChange = async (open: boolean) => {
-    setOpen(open);
-    setHighLight(false);
-    await seenNotification(contextUser.id);
+    if(open) {
+      setOpen(open);
+      setHighLight(false);
+    }
+    else {
+      setOpen(open);
+      await seenNotification(contextUser.id);
+    }
   }
 
   useEffect(() => {
@@ -50,7 +55,7 @@ const Notification: FC = () => {
 
       if(unseenNotis.length > 0) {
         setHighLight(true);
-        loadSenderMap(unseenNotis);
+        await loadSenderMap(unseenNotis);
       }
     }
 
@@ -70,13 +75,21 @@ const Notification: FC = () => {
           if(!newPayload.is_read) {
             const list = notifications.filter(noti => noti.noti_id != newPayload.noti_id);
             list.unshift(newPayload);
+            await loadSenderMap(list);
             setNotifications(list);
             setHighLight(true);
-            await loadSenderMap(list);
           }
+          else {
+            const list = (notifications.length > 0) ? notifications.map(noti => {
+              if(noti.noti_id == newPayload.noti_id) {
+                noti.is_read = true;
+              }
+              return noti;
+            }) : [newPayload];
 
-          // const notifications = await getUnseenNotification(contextUser.id)
-          // setNotifications(notifications);
+            setNotifications(list);
+            setHighLight(false);
+          }
         }
       )
       .subscribe();
@@ -100,26 +113,30 @@ const Notification: FC = () => {
 
           return (
             <List.Item 
-            key={item.noti_id}
-            style={{ cursor: 'pointer', padding: '8px 12px' }}
-          >
-            <List.Item.Meta
-              avatar={
-                <Avatar
-                  src={lastSender.avatar || undefined}
-                  icon={<UserOutlined />}
-                />
-              }
-              title={
-                <Typography.Text strong>
-                  {countSender === 1
-                    ? lastSender.name
-                    : `${lastSender.name} và ${countSender - 1} người khác`}
-                </Typography.Text>
-              }
-              description={<Typography.Text>{item.message}</Typography.Text>}
-            />
-          </List.Item>
+              key={item.noti_id}
+              style={{ cursor: 'pointer', padding: '8px 12px' }}
+            >
+              <List.Item.Meta
+                avatar={
+                  <Badge
+                    count={item.is_read ? 0 : <ExclamationCircleFilled style={{ color: 'hwb(205 6% 9%)' }}/>}
+                  >
+                    <Avatar
+                      src={lastSender.avatar || undefined}
+                      icon={<UserOutlined />}
+                    />
+                  </Badge>
+                }
+                title={
+                  <Typography.Text strong>
+                    {countSender === 1
+                      ? lastSender.name
+                      : `${lastSender.name} và ${countSender - 1} người khác`}
+                  </Typography.Text>
+                }
+                description={<Typography.Text>{item.message}</Typography.Text>}
+              />
+            </List.Item>
           )
         }}
       />
