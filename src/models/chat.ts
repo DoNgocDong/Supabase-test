@@ -1,14 +1,16 @@
 import { UserInfo } from "@/services/user/user";
 import { Effect, Reducer } from "@umijs/max";
 import services from "@/services";
-import { ConversationInfo } from "@/services/chat/chat";
+import { ConversationDTO, ConversationInfo } from "@/services/chat/chat";
 
 const { findUserByName } = services.Users;
+const { getConversationByParticipants } = services.Chat;
 
 export interface ChatState {
   users: UserInfo[];
+  conversations: ConversationInfo[];
   selectedUser: UserInfo | null;
-  setSelectedConversation: ConversationInfo | null;
+  selectedConversation: ConversationInfo | null;
 }
 
 export interface ChatModelType {
@@ -28,8 +30,9 @@ const ChatModel: ChatModelType = {
   namespace: 'chat',
   state: {
     users: [],
+    conversations: [],
     selectedUser: null,
-    setSelectedConversation: null
+    selectedConversation: null
   },
   effects: {
     *findUsers({payload}, {call, put}) {
@@ -48,16 +51,25 @@ const ChatModel: ChatModelType = {
         users: payload
       };
     },
+
+    // queryConversations(state, { payload }) {
+    //   return { 
+    //     ...state, 
+    //     conversations: payload
+    //   };
+    // },
+
     setSelectedUser(state, { payload }) {
       return {
         ...state,
         selectedUser: payload,
       };
     },
+
     setSelectedConversation(state, { payload }) {
       return {
         ...state,
-        setSelectedConversation: payload,
+        selectedConversation: payload,
       };
     },
   }

@@ -5,14 +5,15 @@ import { AnyAction, connect, Dispatch, useModel } from '@umijs/max';
 import { ChatState } from '@/models/chat';
 import { PageHeader } from '@ant-design/pro-components';
 import { UserInfo } from '@/services/user/user';
-// import useChatRealtime from '@/hooks/useChatRealTime';
 import services from '@/services';
 import { MessageInfo } from '@/services/chat/chat';
 import supabase from '@/services/supabase';
+import { MsgNotiType } from '@/services/notification';
 
 const { Sider, Content } = Layout;
 const { Text } = Typography;
-const { createConversation, createMessage, getMessages } = services.Chat;
+const { createOrGetConversation, createMessage, getMessages } = services.Chat;
+const { createNotification } = services.Notifications;
 
 interface ChatModelProps {
   chat: ChatState;
@@ -44,7 +45,7 @@ const ChatPage: FC<ChatModelProps> = ({ chat, dispatch }) => {
   const handleSelectUser = useCallback(async (user: UserInfo) => {
     await dispatch({ type: 'chat/setSelectedUser', payload: user });
 
-    const conversation = await createConversation({
+    const conversation = await createOrGetConversation({
       user1: contextUser.id,
       user2: user.id,
     });
@@ -59,24 +60,37 @@ const ChatPage: FC<ChatModelProps> = ({ chat, dispatch }) => {
     if (!msg.trim()) return;
     if(!chat.selectedUser) return;
 
-    const conversation = await createConversation({
+    const conversation = await createOrGetConversation({
       user1: chat.selectedUser.id,
       user2: contextUser.id
     });
 
-    await createMessage({
+    const message = await createMessage({
       conversation_id: conversation.conversation_id,
       sender_id: contextUser.id,
       receiver_id: chat.selectedUser.id,
       content: msg
     });
 
+    if(message.receiver_id != contextUser.id) {
+      await createNotification({
+        sender_id: message.sender_id,
+        receiver_id: message.receiver_id,
+        message: MsgNotiType.RECEIVE_MSG
+      });
+    }
+
     setChatInput('')
   };
 
   useEffect(() => { 
-    const conversation = chat.setSelectedConversation;
+    const conversation = chat.selectedConversation;
     if(!conversation) return;
+
+    const loadMessages = async function(conversationId: string) {
+      const messages = await getMessages(conversationId);
+      setMessages(messages);
+    }
 
     const channel = supabase
     .channel(`room${conversation.conversation_id}`)
@@ -94,10 +108,12 @@ const ChatPage: FC<ChatModelProps> = ({ chat, dispatch }) => {
     )
     .subscribe();
 
+    loadMessages(conversation.conversation_id);
+
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [chat.setSelectedConversation]);
+  }, [chat.selectedConversation]);
 
   return (
     <Layout style={{ height: '93vh' }}>
@@ -126,6 +142,7 @@ const ChatPage: FC<ChatModelProps> = ({ chat, dispatch }) => {
               onClick={async () => await handleSelectUser(item)}
             >
               <List.Item.Meta
+                style={{ marginLeft: 15 }}
                 avatar={
                   <Avatar
                     src={item.avatar || undefined}
@@ -198,6 +215,7 @@ const ChatPage: FC<ChatModelProps> = ({ chat, dispatch }) => {
           <Input.Group compact>
             <Input
               style={{ width: 'calc(100% - 50px)' }}
+              disabled={chat.selectedConversation == null}
               placeholder="Nhập tin nhắn..."
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}

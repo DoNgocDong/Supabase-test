@@ -69,6 +69,21 @@ export async function findUserByName(name: string) {
   return data as UserInfo[];
 }
 
+export async function findUserById(id: string) {
+  const { data, error } = await supabase
+    .from(userdb)
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if(error) {
+    console.error('Error findUser by ID:', error);
+    throw error;
+  }
+
+  return data as UserInfo;
+}
+
 export async function createUserBucket(userId: string) {
   const bucketName = `user_${userId}`;
 

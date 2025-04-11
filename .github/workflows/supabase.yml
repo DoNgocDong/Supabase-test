@@ -1,0 +1,25 @@
+name: Supabase Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Supabase CLI
+        run: |
+          npm install -g supabase
+
+      - name: Login Supabase
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          supabase link --project-ref viywyymhxbmwgiadayfi
+
+      - name: Deploy database
+        run: supabase db push

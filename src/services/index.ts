@@ -4,9 +4,11 @@
 import * as Users from './user';
 import * as Auth from './auth';
 import * as Chat from './chat';
+import * as Notifications from './notification';
 
 export default {
   Users,
   Auth,
-  Chat
+  Chat,
+  Notifications
 };

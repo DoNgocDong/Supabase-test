@@ -1,6 +1,6 @@
 import { history, RunTimeLayoutConfig, useAccess } from "@umijs/max";
 import logoUrl from "@/assets/logo/KLB_logo.svg";
-import Question from "@/components/RightContent/Question";
+import Notification from "@/components/RightContent/Notification";
 import ForbiddenPage from "./components/Errors/Forbidden";
 import Footer from '@/components/Layouts/Footer';
 import { LinkOutlined } from "@ant-design/icons";
@@ -40,7 +40,7 @@ export const layout: RunTimeLayoutConfig = () => {
   const access = useAccess();
 
   return {
-    actionsRender: () => [<Question key="doc" />],
+    actionsRender: () => [<Notification key="doc" />],
     logo: <img src={logoUrl} alt="KLB logo" style={{ height: '32px' }} />,
     avatarProps: {
       render: () => {

@@ -2,3 +2,7 @@
 export function trim(str: string) {
   return str.trim();
 }
+
+export function getLastArray<T>(arr: T[]): T | undefined {
+  return arr.length > 0 ? arr[arr.length - 1] : undefined;
+}
