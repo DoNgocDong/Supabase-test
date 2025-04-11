@@ -27,6 +27,7 @@ export default [
     component: './chat',
     icon: 'MessageOutlined',
     wrappers: ['@/wrappers/auth'],
+    access: 'user',
   },
   {
     name: 'Profile',
