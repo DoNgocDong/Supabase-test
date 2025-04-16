@@ -1,3 +1,5 @@
+import { MsgType } from "./";
+
 export enum MsgStatus {
   SENT = 'sent',
   SEEN = 'seen',
@@ -9,10 +11,14 @@ export interface ConversationDTO {
 }
 
 export interface MessageDTO {
-  conversation_id?: string;
+  conversation_id: string;
   sender_id: string;
   receiver_id: string;
   content: string;
+  type?: MsgType;
+  file_url?: string;
+  file_name?: string;
+  file_type?: string;
 }
 
 export interface ConversationInfo {
@@ -22,11 +28,16 @@ export interface ConversationInfo {
 } 
 
 export interface MessageInfo {
-  id: string;
+  message_id: string;
   conversation_id: string;
   sender_id: string;
   receiver_id: string;
   content: string;
+  type: MsgType;
+  file_url: string;
+  file_name: string;
+  file_type: string;
   status: MsgStatus;
   created_at: string;
+  recalled: boolean;
 }

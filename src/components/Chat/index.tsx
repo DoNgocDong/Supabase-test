@@ -1,5 +1,5 @@
-import { Layout, Input, Button, List, Avatar, Typography, message } from 'antd';
-import { SendOutlined, SearchOutlined, UserOutlined } from '@ant-design/icons';
+import { Layout, Input, Button, List, Avatar, Typography, message, Popconfirm, Upload } from 'antd';
+import { SendOutlined, SearchOutlined, UserOutlined, DeleteOutlined, PaperClipOutlined } from '@ant-design/icons';
 import { FC, useCallback, useEffect, useState } from 'react';
 import { AnyAction, connect, Dispatch, useModel } from '@umijs/max';
 import { ChatState } from '@/models/chat';
@@ -12,7 +12,7 @@ import { MsgNotiType } from '@/services/notification';
 
 const { Sider, Content } = Layout;
 const { Text } = Typography;
-const { createOrGetConversation, createMessage, getMessages } = services.Chat;
+const { createOrGetConversation, createMessage, getMessages, recallMessage } = services.Chat;
 const { createNotification } = services.Notifications;
 
 interface ChatModelProps {
@@ -25,6 +25,7 @@ const ChatPage: FC<ChatModelProps> = ({ chat, dispatch }) => {
   const [chatInput, setChatInput] = useState('');
   const [userInput, setUserInput] = useState('');
   const [messages, setMessages] = useState<MessageInfo[]>([]);
+  const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
 
   const contextUser = initialState?.user;
 
@@ -83,6 +84,15 @@ const ChatPage: FC<ChatModelProps> = ({ chat, dispatch }) => {
     setChatInput('')
   };
 
+  const handleRecallMessage = async (messageId: string) => {
+    try {
+      await recallMessage(messageId);
+    } catch (error: any) {
+      const msg = error?.response?.data?.error?.message || error?.response?.data || error?.message;
+      message.error(msg || 'Unknown Error!');
+    }
+  }
+
   useEffect(() => { 
     const conversation = chat.selectedConversation;
     if(!conversation) return;
@@ -104,6 +114,30 @@ const ChatPage: FC<ChatModelProps> = ({ chat, dispatch }) => {
       },
       (payload) => {
         setMessages((prev) => [payload.new as MessageInfo, ...prev]);
+      }
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'messages',
+        filter: `conversation_id=eq.${conversation.conversation_id}`,
+      },
+      (payload) => {
+        const updateMsg = payload.new as MessageInfo;
+
+        setMessages((prev) => {
+          prev = prev.map((msg) => {
+            if (msg.message_id === updateMsg.message_id) {
+              return { ...msg, ...updateMsg };
+            }
+            return msg;
+          });
+          console.log('update message:', prev);
+
+          return [...prev];
+        });
       }
     )
     .subscribe();
@@ -133,15 +167,17 @@ const ChatPage: FC<ChatModelProps> = ({ chat, dispatch }) => {
           itemLayout="horizontal"
           dataSource={chat.users}
           renderItem={(item) => (
-            <List.Item 
+            <List.Item
               key={item.id}
               style={{
                 cursor: 'pointer',
-                backgroundColor: chat.selectedUser?.id === item.id ? '#e6f7ff' : undefined,
+                backgroundColor:
+                  chat.selectedUser?.id === item.id ? '#e6f7ff' : undefined,
               }}
               onClick={async () => await handleSelectUser(item)}
             >
               <List.Item.Meta
+                key={item.id}
                 style={{ marginLeft: 15 }}
                 avatar={
                   <Avatar
@@ -163,13 +199,14 @@ const ChatPage: FC<ChatModelProps> = ({ chat, dispatch }) => {
         <PageHeader
           title={chat.selectedUser?.name || 'Chọn một cuộc trò chuyện'}
           avatar={{
-            src: chat.selectedUser?.avatar, 
-            icon:<UserOutlined />
+            src: chat.selectedUser?.avatar,
+            icon: <UserOutlined />,
           }}
         />
 
         {/* Nội dung tin nhắn (Body) */}
         <Content
+          key={chat.selectedConversation?.conversation_id}
           style={{
             flex: 1,
             padding: '10px',
@@ -178,28 +215,84 @@ const ChatPage: FC<ChatModelProps> = ({ chat, dispatch }) => {
             flexDirection: 'column-reverse',
           }}
         >
-          {messages && messages.map((msg) => (
-            <div
-              key={msg.id}
-              style={{
-                textAlign: (msg.sender_id == contextUser.id) ? 'right' : 'left',
-                margin: '5px 0',
-              }}
-            >
-              <Text
-                style={{
-                  background: (msg.sender_id == contextUser.id) ? '#1677ff' : '#e8e8e8',
-                  padding: '8px 12px',
-                  borderRadius: '8px',
-                  color: (msg.sender_id == contextUser.id) ? 'white' : 'black',
-                  display: 'inline-block',
-                  maxWidth: '70%',
-                }}
-              >
-                {msg.content}
-              </Text>
-            </div>
-          ))}
+          {messages &&
+            messages.map((msg) => {
+              const isSender = msg.sender_id == contextUser.id;
+
+              if (msg.recalled) {
+                return (
+                  <div
+                    key={msg.message_id}
+                    style={{
+                      textAlign: isSender ? 'right' : 'left',
+                      margin: '5px 0',
+                    }}
+                  >
+                    <Text
+                      italic
+                      type="secondary"
+                      style={{
+                        background: '#f5f5f5',
+                        padding: '4px 6px',
+                        borderRadius: '10px',
+                        display: 'inline-block',
+                        maxWidth: '70%',
+                        fontSize: '13px',
+                        border: '1px dashed #bfbfbf',
+                      }}
+                    >
+                      Tin nhắn đã thu hồi
+                    </Text>
+                  </div>
+                );
+              }
+
+              return (
+                <div
+                  key={msg.message_id}
+                  style={{
+                    textAlign: isSender ? 'right' : 'left',
+                    margin: '5px 0',
+                  }}
+                  onMouseEnter={() => setHoveredMessageId(msg.message_id)}
+                  // onMouseLeave={() => setHoveredMessageId(null)}
+                >
+                  {hoveredMessageId === msg.message_id && isSender && (
+                    <Popconfirm
+                      title="Bạn có chắc muốn thu hồi tin nhắn này?"
+                      onConfirm={async () =>
+                        await handleRecallMessage(msg.message_id)
+                      }
+                      okText="Đồng ý"
+                      cancelText="Hủy"
+                    >
+                      <Button
+                        type="text"
+                        icon={<DeleteOutlined />}
+                        style={{
+                          color: 'red',
+                          fontSize: '12px',
+                        }}
+                      ></Button>
+                    </Popconfirm>
+                  )}
+                  <Text
+                    style={{
+                      background:
+                        msg.sender_id == contextUser.id ? '#1677ff' : '#e8e8e8',
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      color:
+                        msg.sender_id == contextUser.id ? 'white' : 'black',
+                      display: 'inline-block',
+                      maxWidth: '70%',
+                    }}
+                  >
+                    {msg.content}
+                  </Text>
+                </div>
+              );
+            })}
         </Content>
 
         {/* Footer luôn cố định */}
@@ -213,8 +306,27 @@ const ChatPage: FC<ChatModelProps> = ({ chat, dispatch }) => {
           }}
         >
           <Input.Group compact>
+            <Upload
+              // beforeUpload={(file) => {
+              //   handleAttachFile(file); // Xử lý khi chọn file
+              //   return false; // Không upload mặc định
+              // }}
+              showUploadList={false}
+              multiple={false}
+              accept="*" // hoặc '*'
+            >
+              <Button
+                type="text"
+                icon={<PaperClipOutlined />}
+                style={{ width: 40 }}
+              />
+            </Upload>
             <Input
-              style={{ width: 'calc(100% - 50px)' }}
+              style={{ 
+                width: 'calc(100% - 100px)',
+                borderRadius: '15px',
+                marginRight: '10px', 
+              }}
               disabled={chat.selectedConversation == null}
               placeholder="Nhập tin nhắn..."
               value={chatInput}

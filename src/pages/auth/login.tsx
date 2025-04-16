@@ -16,9 +16,9 @@ import logoUrl from "@/assets/logo/KLB_logo.svg";
 import { useCallback, type CSSProperties, type FC } from 'react';
 import { history, Link } from '@umijs/max';
 import services from '@/services';
-import { AuthError, SignInWithPasswordCredentials } from '@supabase/supabase-js';
+import { AuthError, Provider, SignInWithPasswordCredentials } from '@supabase/supabase-js';
 
-const { loginEmail } = services.Auth;
+const { loginEmail, loginOAuth } = services.Auth;
 
 const iconStyles: CSSProperties = {
   color: 'rgba(0, 0, 0, 0.2)',
@@ -26,7 +26,6 @@ const iconStyles: CSSProperties = {
   verticalAlign: 'middle',
   cursor: 'pointer',
 };
-
 
 const Page: FC = () => {
   const { token } = theme.useToken();
@@ -39,6 +38,15 @@ const Page: FC = () => {
       
       history.push('/home'); 
       window.location.reload()
+    } catch (error: AuthError | any) { 
+      const msg = error?.response?.data?.message || error?.response?.data || error?.message || 'Unknow Error!';
+      message.error(msg); 
+    } 
+  }, []);
+
+  const handleLoginOAuth = useCallback(async (provider: Provider) => {
+    try { 
+      await loginOAuth(provider);
     } catch (error: AuthError | any) { 
       const msg = error?.response?.data?.message || error?.response?.data || error?.message || 'Unknow Error!';
       message.error(msg); 
@@ -133,7 +141,7 @@ const Page: FC = () => {
                   borderRadius: '50%',
                 }}
               >
-                <GoogleOutlined style={{ ...iconStyles, color: '#121413' }} />
+                <GithubOutlined style={{ ...iconStyles, color: '#121413' }} onClick={async () => await handleLoginOAuth('github')}/>
               </div>
               <div
                 style={{
@@ -147,7 +155,7 @@ const Page: FC = () => {
                   borderRadius: '50%',
                 }}
               >
-                <GithubOutlined style={{ ...iconStyles, color: '#121413' }} />
+                <GoogleOutlined style={{ ...iconStyles, color: '#121413' }} />
               </div>
             </Space>  
             <Divider plain>

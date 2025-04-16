@@ -4,8 +4,7 @@ import Notification from "@/components/RightContent/Notification";
 import ForbiddenPage from "./components/Errors/Forbidden";
 import Footer from '@/components/Layouts/Footer';
 import { LinkOutlined } from "@ant-design/icons";
-import { getUser as getAuthUser } from "./services/auth";
-import { getUser } from "./services/user";
+import { getAuthUser } from "./services/auth";
 import { User } from "@supabase/supabase-js";
 import AvatarContent from "./components/RightContent/Avatar";
 import { message } from "antd";
@@ -19,10 +18,10 @@ export async function getInitialState(): Promise<{
   let profile = undefined;
 
   try {
-    const authUser = await getAuthUser();
-    if(authUser) {
-      profile = await getUser(authUser?.email);
-      contextUser = authUser;
+    const auth = await getAuthUser();
+    if(auth) {
+      profile = auth.publicUser;
+      contextUser = auth.authUser;
     }
   } catch (error) {
     contextUser = undefined;

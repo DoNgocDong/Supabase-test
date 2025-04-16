@@ -9,7 +9,9 @@ export async function addUser(userInfo: UserDTO) {
     .insert({ 
       id: userInfo.id ? userInfo.id : null,
       email: userInfo.email, 
-      name: userInfo.name 
+      name: userInfo.name,
+      avatar: userInfo.avatar ? userInfo.avatar : null,
+      provider: userInfo.provider ? userInfo.provider : null, 
     })
     .select()
     .single();
@@ -47,7 +49,7 @@ export async function getUser(email = "") {
     .eq('email', email)
     .single();
 
-  if(error) {
+  if(error || !data) {
     console.error('Error getUser:', error);
     throw error;
   }
@@ -85,7 +87,7 @@ export async function findUserById(id: string) {
 }
 
 export async function createUserBucket(userId: string) {
-  const bucketName = `user_${userId}`;
+  const bucketName = `user-${userId}`;
 
   const { data, error } = await supabase.storage.createBucket(bucketName, {
     public: false,

@@ -4,6 +4,12 @@ import {ConversationInfo, MessageInfo, ConversationDTO, MessageDTO} from './chat
 const messageDb = 'messages';
 const conversationDb = 'conversations';
 
+export enum MsgType {
+  TEXT = 'text',
+  IMAGE = 'image',
+  FILE = 'file',
+}
+
 export async function createOrGetConversation(dto: ConversationDTO) {
   const usersSet = [dto.user1, dto.user2].sort();
   const formattedArray = `{${usersSet.join(',')}}`;
@@ -63,15 +69,15 @@ export async function getConversationByParticipants(dto: ConversationDTO) {
 
 export async function createMessage(dto: MessageDTO) {
   const { data, error } = await supabase
-  .from(messageDb)
-  .insert({ 
-    conversation_id: dto.conversation_id ? dto.conversation_id : null,
-    sender_id: dto.sender_id,
-    receiver_id: dto.receiver_id,
-    content: dto.content
-  })
-  .select()
-  .single();
+    .from(messageDb)
+    .insert({ 
+      conversation_id: dto.conversation_id ? dto.conversation_id : null,
+      sender_id: dto.sender_id,
+      receiver_id: dto.receiver_id,
+      content: dto.content
+    })
+    .select()
+    .single();
 
   if(error) {
     console.error('Error create Message:', error);
@@ -83,10 +89,10 @@ export async function createMessage(dto: MessageDTO) {
 
 export async function getMessages(conversationId: string) {
   const { data, error } = await supabase
-  .from(messageDb)
-  .select('*')
-  .eq('conversation_id', conversationId)
-  .order('created_at', { ascending: false });
+    .from(messageDb)
+    .select('*')
+    .eq('conversation_id', conversationId)
+    .order('created_at', { ascending: false });
 
   if(error) {
     console.error('Error get Messages:', error);
@@ -98,10 +104,10 @@ export async function getMessages(conversationId: string) {
 
 export async function getMessageById(messageId: string) {
   const { data, error } = await supabase
-  .from(messageDb)
-  .select('*')
-  .eq('message_id', messageId)
-  .single();
+    .from(messageDb)
+    .select('*')
+    .eq('message_id', messageId)
+    .single();
 
   if(error) {
     console.error('Error get Message by ID:', error);
@@ -109,4 +115,16 @@ export async function getMessageById(messageId: string) {
   }
 
   return data as MessageInfo;
+}
+
+export async function recallMessage(messageId: string) {
+  const { error } = await supabase
+    .from(messageDb)
+    .update({ recalled: true })
+    .eq('message_id', messageId);
+
+  if(error) {
+    console.error('Error Recall message:', error);
+    throw error;
+  }
 }

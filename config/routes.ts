@@ -16,10 +16,17 @@ export default [
     hideInMenu: true
   },
   {
+    path: '/oauth/callback',
+    component: './auth/oauthResult.tsx',
+    layout: false,
+    hideInMenu: true
+  },
+  {
     path: '/register',
     component: './auth/register.tsx',
     layout: false,
-    hideInMenu: true
+    hideInMenu: true,
+    wrappers: ['@/wrappers/auth'],
   },
   {
     name: 'Chat',
