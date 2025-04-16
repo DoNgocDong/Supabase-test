@@ -90,7 +90,7 @@ export async function createUserBucket(userId: string) {
   const bucketName = `user-${userId}`;
 
   const { data, error } = await supabase.storage.createBucket(bucketName, {
-    public: false,
+    public: true,
   });
 
   if (error) {
@@ -123,7 +123,7 @@ export async function uploadAvatarStorages(userId: string, file: File) {
 }
 
 async function getUrl(filePath: string) {
-  const { data,  } = supabase.storage
+  const { data } = supabase.storage
     .from('avatars')
     .getPublicUrl(filePath);
   

@@ -1,4 +1,4 @@
-import { Layout, Input, Button, List, Avatar, Typography, message, Popconfirm, Upload } from 'antd';
+import { Layout, Input, Button, List, Avatar, Typography, message, Popconfirm, Upload, UploadProps, Image } from 'antd';
 import { SendOutlined, SearchOutlined, UserOutlined, DeleteOutlined, PaperClipOutlined } from '@ant-design/icons';
 import { FC, useCallback, useEffect, useState } from 'react';
 import { AnyAction, connect, Dispatch, useModel } from '@umijs/max';
@@ -9,10 +9,11 @@ import services from '@/services';
 import { MessageInfo } from '@/services/chat/chat';
 import supabase from '@/services/supabase';
 import { MsgNotiType } from '@/services/notification';
+import { MsgType } from '@/services/chat';
 
 const { Sider, Content } = Layout;
 const { Text } = Typography;
-const { createOrGetConversation, createMessage, getMessages, recallMessage } = services.Chat;
+const { createOrGetConversation, createMessage, getMessages, recallMessage, uploadFile, deleteFile, downloadFile } = services.Chat;
 const { createNotification } = services.Notifications;
 
 interface ChatModelProps {
@@ -28,6 +29,7 @@ const ChatPage: FC<ChatModelProps> = ({ chat, dispatch }) => {
   const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
 
   const contextUser = initialState?.user;
+  const MAX_FILE_SIZE_MB = 10;
 
   if(!contextUser) return <div>No User active!</div>
 
@@ -84,14 +86,71 @@ const ChatPage: FC<ChatModelProps> = ({ chat, dispatch }) => {
     setChatInput('')
   };
 
-  const handleRecallMessage = async (messageId: string) => {
+  const handleRecallMessage = async (msg: MessageInfo) => {
     try {
-      await recallMessage(messageId);
+      if(msg.type === MsgType.TEXT) {
+        await recallMessage(msg.message_id);
+        return;
+      }
+
+      await Promise.all([
+        deleteFile(contextUser.id, msg.file_path),
+        recallMessage(msg.message_id)
+      ]);
     } catch (error: any) {
       const msg = error?.response?.data?.error?.message || error?.response?.data || error?.message;
       message.error(msg || 'Unknown Error!');
     }
   }
+
+  const handleBeforeUpload = async (file: File) => {
+    const conversation = chat.selectedConversation;
+
+    if(!conversation) return Upload.LIST_IGNORE;
+    if(!chat.selectedUser) return;
+
+    const isLt5M = file.size / 1024 / 1024 < MAX_FILE_SIZE_MB;
+    if (!isLt5M) {
+      message.error('File phải nhỏ hơn 10MB!');
+      return Upload.LIST_IGNORE;
+    }
+
+    const msgType = file.type.startsWith('image/') ? MsgType.IMAGE : MsgType.FILE;
+
+    try {
+      const fileUpload = await uploadFile(
+        conversation.conversation_id,
+        contextUser.id,
+        file
+      );
+
+      console.log('fileUpload:', fileUpload);
+
+      const msg = await createMessage({
+        conversation_id: conversation.conversation_id,
+        sender_id: contextUser.id,
+        receiver_id: chat.selectedUser.id,
+        type: msgType,
+        file_type: file.type,
+        file_url: fileUpload.publicUrl,
+        file_path: fileUpload.filePath,
+        file_name: file.name,
+      });
+  
+      if(msg.receiver_id != contextUser.id) {
+        await createNotification({
+          sender_id: msg.sender_id,
+          receiver_id: msg.receiver_id,
+          message: MsgNotiType.RECEIVE_FILE
+        });
+      }
+    } catch (error: any) {
+      const msg = error?.response?.data?.error?.message || error?.response?.data || error?.message;
+      message.error(msg || 'Unknown Error!');
+    }
+  
+    return false;
+  };
 
   useEffect(() => { 
     const conversation = chat.selectedConversation;
@@ -261,7 +320,7 @@ const ChatPage: FC<ChatModelProps> = ({ chat, dispatch }) => {
                     <Popconfirm
                       title="Bạn có chắc muốn thu hồi tin nhắn này?"
                       onConfirm={async () =>
-                        await handleRecallMessage(msg.message_id)
+                        await handleRecallMessage(msg)
                       }
                       okText="Đồng ý"
                       cancelText="Hủy"
@@ -276,20 +335,58 @@ const ChatPage: FC<ChatModelProps> = ({ chat, dispatch }) => {
                       ></Button>
                     </Popconfirm>
                   )}
-                  <Text
-                    style={{
-                      background:
-                        msg.sender_id == contextUser.id ? '#1677ff' : '#e8e8e8',
-                      padding: '8px 12px',
-                      borderRadius: '8px',
-                      color:
-                        msg.sender_id == contextUser.id ? 'white' : 'black',
-                      display: 'inline-block',
-                      maxWidth: '70%',
-                    }}
-                  >
-                    {msg.content}
-                  </Text>
+
+                  {msg.type === MsgType.TEXT && (
+                    <Text
+                      style={{
+                        background:
+                          msg.sender_id == contextUser.id
+                            ? '#1677ff'
+                            : '#e8e8e8',
+                        padding: '8px 12px',
+                        borderRadius: '8px',
+                        color:
+                          msg.sender_id == contextUser.id ? 'white' : 'black',
+                        display: 'inline-block',
+                        maxWidth: '70%',
+                      }}
+                    >
+                      {msg.content}
+                    </Text>
+                  )}
+
+                  {msg.type === MsgType.IMAGE && (
+                    <Image
+                      src={msg.file_url}
+                      alt={`${msg.file_name}`}
+                      style={{
+                        maxWidth: '200px',
+                        borderRadius: '8px',
+                      }}
+                    />
+                  )}
+
+                  {msg.type === MsgType.FILE && (
+                    <div
+                      style={{
+                        background: isSender ? '#d6f5dd' : '#e8e8e8',
+                        padding: '8px 8px',
+                        borderRadius: '8px',
+                        display: 'inline-block',
+                        maxWidth: '70%',
+                      }}
+                    >
+                      <Button
+                        type='link'
+                        size='small'
+                        onClick={() => window.open(msg.file_url)}
+                        icon={<PaperClipOutlined />}
+                        style={{ fontWeight: 500 }}
+                      >
+                        {msg.file_name}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -307,13 +404,11 @@ const ChatPage: FC<ChatModelProps> = ({ chat, dispatch }) => {
         >
           <Input.Group compact>
             <Upload
-              // beforeUpload={(file) => {
-              //   handleAttachFile(file); // Xử lý khi chọn file
-              //   return false; // Không upload mặc định
-              // }}
+              disabled={chat.selectedConversation == null}
+              beforeUpload={handleBeforeUpload}
               showUploadList={false}
               multiple={false}
-              accept="*" // hoặc '*'
+              accept="*"
             >
               <Button
                 type="text"

@@ -4,7 +4,8 @@ import { NotiDTO, NotiInfo } from './noti'
 const notiDb = 'notifications';
 
 export enum MsgNotiType {
-  RECEIVE_MSG = 'vừa gửi tin nhắn cho bạn'
+  RECEIVE_MSG = 'vừa gửi tin nhắn cho bạn',
+  RECEIVE_FILE = 'vừa gửi cho bạn 1 file đính kèm'
 }
 
 export async function getUnseenNotification(receiverId: string) {

@@ -74,7 +74,12 @@ export async function createMessage(dto: MessageDTO) {
       conversation_id: dto.conversation_id ? dto.conversation_id : null,
       sender_id: dto.sender_id,
       receiver_id: dto.receiver_id,
-      content: dto.content
+      content: dto.content,
+      type: dto.type ? dto.type : null,
+      file_url: dto.file_url ? dto.file_url : null,
+      file_path: dto.file_path ? dto.file_path : null,
+      file_name: dto.file_name ? dto.file_name : null,
+      file_type: dto.file_type ? dto.file_type : null,
     })
     .select()
     .single();
@@ -127,4 +132,66 @@ export async function recallMessage(messageId: string) {
     console.error('Error Recall message:', error);
     throw error;
   }
+}
+
+export async function uploadFile(conversationId: string, userId: string, file: File) {
+  const bucketName = `user-${userId}`;
+  const filePath = `conversation_${conversationId}/${Date.now()}_${file.name}`;
+
+  const { data, error } = await supabase.storage
+    .from(bucketName)
+    .upload(
+      filePath, 
+      file, 
+      { 
+        cacheControl: '3600',
+        upsert: true 
+      }
+    )
+
+  if (error) {
+    console.error('Send file failure:', error);
+    throw error;
+  }
+
+  return {
+    filePath: data.path,
+    publicUrl: getPublicUrl(bucketName, filePath),
+  };
+}
+
+export async function deleteFile(userId: string, filePath: string) {
+  const bucketName = `user-${userId}`;
+  
+  const { error } = await supabase.storage
+    .from(bucketName)
+    .remove([filePath]);
+
+  if (error) {
+    console.error('Delete file failure:', error);
+    throw error;
+  }
+}
+
+export async function downloadFile(userId: string, filePath: string) {
+  const bucketName = `user-${userId}`;
+
+  const { data, error } = await supabase.storage
+    .from(bucketName)
+    .download(filePath);
+
+  if (error) {
+    console.error('Download file failure:', error);
+    throw error;
+  }
+
+  return data;
+}
+
+export function getPublicUrl(bucketName: string, filePath: string) {
+  const { data } = supabase.storage
+    .from(bucketName)
+    .getPublicUrl(filePath);
+
+  return data.publicUrl;
 }

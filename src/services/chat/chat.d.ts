@@ -14,9 +14,10 @@ export interface MessageDTO {
   conversation_id: string;
   sender_id: string;
   receiver_id: string;
-  content: string;
+  content?: string;
   type?: MsgType;
   file_url?: string;
+  file_path?: string;
   file_name?: string;
   file_type?: string;
 }
@@ -35,6 +36,7 @@ export interface MessageInfo {
   content: string;
   type: MsgType;
   file_url: string;
+  file_path: string;
   file_name: string;
   file_type: string;
   status: MsgStatus;
