@@ -5,10 +5,12 @@ import * as Users from './user';
 import * as Auth from './auth';
 import * as Chat from './chat';
 import * as Notifications from './notification';
+import * as PushNotification from './push-notification';
 
 export default {
   Users,
   Auth,
   Chat,
-  Notifications
+  Notifications,
+  PushNotification
 };

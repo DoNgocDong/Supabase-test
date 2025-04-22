@@ -75,7 +75,7 @@ export async function createMessage(dto: MessageDTO) {
       sender_id: dto.sender_id,
       receiver_id: dto.receiver_id,
       content: dto.content,
-      type: dto.type ? dto.type : null,
+      type: dto.type ? dto.type : MsgType.TEXT,
       file_url: dto.file_url ? dto.file_url : null,
       file_path: dto.file_path ? dto.file_path : null,
       file_name: dto.file_name ? dto.file_name : null,

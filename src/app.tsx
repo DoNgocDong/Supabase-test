@@ -1,4 +1,4 @@
-import { history, RunTimeLayoutConfig, useAccess } from "@umijs/max";
+import { history, RunTimeLayoutConfig, useAccess, useModel } from "@umijs/max";
 import logoUrl from "@/assets/logo/KLB_logo.svg";
 import Notification from "@/components/RightContent/Notification";
 import ForbiddenPage from "./components/Errors/Forbidden";
@@ -9,6 +9,13 @@ import { User } from "@supabase/supabase-js";
 import AvatarContent from "./components/RightContent/Avatar";
 import { message } from "antd";
 import { UserInfo } from "./services/user/user";
+import { useEffect } from "react";
+import { subscribeToPushNotifications } from "./utils/push";
+import services from "./services";
+import supabase from '@/services/supabase';
+import { MessageInfo } from "./services/chat/chat";
+
+const { saveSubscription, callSendBrowserNoti } = services.PushNotification;
 
 export async function getInitialState(): Promise<{ 
   user?: User,
@@ -37,6 +44,44 @@ export async function getInitialState(): Promise<{
 
 export const layout: RunTimeLayoutConfig = () => {
   const access = useAccess();
+  const { initialState } = useModel('@@initialState');
+
+  useEffect(() => {
+    const channel = supabase
+    .channel(`room_pushNotification`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+      },
+      (payload) => {
+        const newMsg = payload.new as MessageInfo;
+
+        if(newMsg.receiver_id == initialState?.user?.id) {
+          callSendBrowserNoti(initialState?.user, newMsg.content || '')
+        }
+      }
+    )
+    .subscribe();
+
+    const registerPushSubscription = async () => {
+      if(initialState?.user) {
+        subscribeToPushNotifications().then(async (subscription) => {
+          if (subscription && initialState.user) {
+            await saveSubscription(initialState.user.id, subscription);
+          }
+        });
+      }
+    }
+
+    registerPushSubscription();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [initialState]);
 
   return {
     actionsRender: () => [<Notification key="doc" />],

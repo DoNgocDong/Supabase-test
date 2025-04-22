@@ -15,6 +15,7 @@ const { Sider, Content } = Layout;
 const { Text } = Typography;
 const { createOrGetConversation, createMessage, getMessages, recallMessage, uploadFile, deleteFile, downloadFile } = services.Chat;
 const { createNotification } = services.Notifications;
+const { callSendBrowserNoti } = services.PushNotification;
 
 interface ChatModelProps {
   chat: ChatState;
@@ -172,7 +173,12 @@ const ChatPage: FC<ChatModelProps> = ({ chat, dispatch }) => {
         filter: `conversation_id=eq.${conversation.conversation_id}`,
       },
       (payload) => {
-        setMessages((prev) => [payload.new as MessageInfo, ...prev]);
+        const newMsg = payload.new as MessageInfo;
+        setMessages((prev) => [newMsg, ...prev]);
+
+        // if(newMsg.receiver_id == contextUser.id) {
+        //   callSendBrowserNoti(contextUser, newMsg.content || '')
+        // }
       }
     )
     .on(
@@ -193,7 +199,6 @@ const ChatPage: FC<ChatModelProps> = ({ chat, dispatch }) => {
             }
             return msg;
           });
-          console.log('update message:', prev);
 
           return [...prev];
         });
