@@ -1,5 +1,6 @@
 import { User } from "@supabase/supabase-js";
 import supabase from "../supabase";
+import { UserInfo } from "../user/user";
 
 const pushNotificationDb = 'push_subscriptions';
 
@@ -24,14 +25,14 @@ export async function saveSubscription(userId: string, subscription: PushSubscri
   }
 }
 
-export async function callSendBrowserNoti(user: User, message: string) {
+export async function callSendBrowserNoti(sender: User, receiver: UserInfo, message: string) {
   const { error } = await supabase
     .functions
     .invoke('send-browser-notification', {
       body: JSON.stringify({
-        user_id: user.id,
+        receiver: receiver,
         payload: {
-          senderName: user.user_metadata.full_name || user.user_metadata.name || user.user_metadata.email,
+          senderName: sender.user_metadata.full_name || sender.user_metadata.name || sender.user_metadata.email,
           message: message
         }
       })

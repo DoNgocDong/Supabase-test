@@ -47,25 +47,6 @@ export const layout: RunTimeLayoutConfig = () => {
   const { initialState } = useModel('@@initialState');
 
   useEffect(() => {
-    const channel = supabase
-    .channel(`room_pushNotification`)
-    .on(
-      'postgres_changes',
-      {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'messages',
-      },
-      (payload) => {
-        const newMsg = payload.new as MessageInfo;
-
-        if(newMsg.receiver_id == initialState?.user?.id) {
-          callSendBrowserNoti(initialState?.user, newMsg.content || '')
-        }
-      }
-    )
-    .subscribe();
-
     const registerPushSubscription = async () => {
       if(initialState?.user) {
         subscribeToPushNotifications().then(async (subscription) => {
@@ -77,10 +58,6 @@ export const layout: RunTimeLayoutConfig = () => {
     }
 
     registerPushSubscription();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, [initialState]);
 
   return {

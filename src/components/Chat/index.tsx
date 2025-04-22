@@ -155,7 +155,9 @@ const ChatPage: FC<ChatModelProps> = ({ chat, dispatch }) => {
 
   useEffect(() => { 
     const conversation = chat.selectedConversation;
+    const selectedUser = chat.selectedUser;
     if(!conversation) return;
+    if(!selectedUser) return;
 
     const loadMessages = async function(conversationId: string) {
       const messages = await getMessages(conversationId);
@@ -176,9 +178,9 @@ const ChatPage: FC<ChatModelProps> = ({ chat, dispatch }) => {
         const newMsg = payload.new as MessageInfo;
         setMessages((prev) => [newMsg, ...prev]);
 
-        // if(newMsg.receiver_id == contextUser.id) {
-        //   callSendBrowserNoti(contextUser, newMsg.content || '')
-        // }
+        if(newMsg.receiver_id != contextUser.id) {
+          callSendBrowserNoti(contextUser, selectedUser, newMsg.content || '')
+        }
       }
     )
     .on(
@@ -211,7 +213,7 @@ const ChatPage: FC<ChatModelProps> = ({ chat, dispatch }) => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [chat.selectedConversation]);
+  }, [chat]);
 
   return (
     <Layout style={{ height: '93vh' }}>

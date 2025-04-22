@@ -11,11 +11,6 @@ const vapidKeys = await webPush.importVapidKeys(rootKey, {
   extractable: false,
 });
 
-const appServer = await webPush.ApplicationServer.new({
-  contactInformation: 'mailto:ngocdong2110.2003@gmail.com',
-  vapidKeys: vapidKeys
-});
-
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response('ok', {
@@ -25,14 +20,19 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const { user_id, payload } = await req.json();
+    const { receiver, payload } = await req.json();
 
     const { senderName, message } = payload;
+
+    const appServer = await webPush.ApplicationServer.new({
+      contactInformation: `mailto:${senderName}`,
+      vapidKeys: vapidKeys
+    });
   
     const { data, error } = await supabase
       .from('push_subscriptions')
       .select('*')
-      .eq('user_id', user_id)
+      .eq('user_id', receiver.id)
       .single();
   
     if (error || !data) {
@@ -48,7 +48,7 @@ Deno.serve(async (req: Request) => {
 
     await subscriber.pushTextMessage(
       JSON.stringify({
-        title: `🔔 Thông báo mới đến từ ${senderName}`,
+        title: `🔔 Tin nhắn mới từ ${senderName}`,
         body: message
       }),
       {}
